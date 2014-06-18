@@ -4,14 +4,14 @@
 # (c) TealComp.com 20140327
 
 # --- import modules ---
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
 import pandas as pd
-import urllib2
 import time as time
 import datetime as datetime
 import calendar as calendar
-from mpl_toolkits.basemap import Basemap
 
 # --- functions ---
 def str2datetime(timestr):
@@ -42,22 +42,29 @@ def plot_quakes(quakes):
 	# draw boundary around map
 	m.drawmapboundary(fill_color = '#0B4BD2')
 	# generate x and y values from longitude and latitude
-	x, y = m(quakes['longitude'], quakes['latitude'])
+	# x, y = m(quakes['longitude'], quakes['latitude'])
+	lats = [ v for v in quakes['latitude'] ]
+	lons = [ v for v in quakes['longitude'] ]
+	depths = [ v for v in quakes['depth'] ]
+	mags = [ v for v in quakes['mag'] ]
+	x, y = m(lons, lats)
 
 	# loop through x values
 	for i in range(len(x)):
-		if quakes['depth'][i:i+1].any() < 70:
+		if depths[i:i+1] < 70:
 			# set color for depths less than 70
-			heatcolor = heatcolors[1]
-		elif 70 <= quakes['depth'][i:i+1].any() < 300:
+			heatcolor = heatcolors[0]
+		elif 70 <= depths[i:i+1] < 300:
 			# set color for depths between 70 and 300
-			heatcolor = heatcolors[2]
+			heatcolor = heatcolors[1]
 		else:
 			# set color for depths greater than or equal to 300
-			heatcolor = heatcolors[3]
+			heatcolor = heatcolors[2]
 		# plot quakes using circles with colors appropriate for
 		# depth and radius relative to magnitude
-		m.plot(x[i:i+1], y[i:i+1], heatcolor, marker = 'o', markersize = (np.pi * quakes['mag'][i:i+1]**2)/2, alpha = 0.6)
+		m.plot(x[i], y[i], heatcolor, marker = 'o', markersize = (np.pi * mags[i]**2)/2, alpha = 0.6)
+		sys.stdout.write('. ')
+		sys.stdout.flush()
 	fig.show()
 
 
@@ -77,6 +84,8 @@ def plot_quake_counts(quakes):
 		# store the date and daily counts in lists
 		dates.append(this_date)
 		quake_counts.append(cnt)
+		sys.stdout.write('. ')
+		sys.stdout.flush()
 		this_date = this_date + datetime.timedelta(days=1)
 	# plot quake counts as a series of horizontal lines
 	plt.hlines(dates, 
@@ -88,6 +97,7 @@ def plot_quake_counts(quakes):
 	plt.ylabel('Date')
 	plt.grid(True)
 	plt.show()
+	print('')
 
 
 def quake_feature_stats(quakes, feature):
@@ -99,30 +109,15 @@ def quake_feature_stats(quakes, feature):
 		'std' : np.std(quakes[feature])}
 
 
-# --- main routine ---
-
-url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.csv'
-try:
-	response = urllib2.urlopen(url)
-except URLError as e:
-	if hasattr(e, 'reason'):
-		print('Could not reach server')
-		print('Reason: {0}'.format(e.reason))
-	elif hasattr(e, 'code'):
-		print('The server could not fulfill the request')
-		print('Error code:'.format(e.code))
-	else:
-		print('Data retrieved successfully')
-
-
-eq = pd.read_csv(response, sep=',', header=0)
+# --- read data ---
+eq = pd.read_csv('usgs_earthquakes_all_20140327.csv', sep=',', header=0)
 
 # describe the data set
 date_min = np.min([str2datetime(tm) for tm in eq['time']])
 date_max = np.max([str2datetime(tm) for tm in eq['time']])
-print('The current data set includes USGS earthquake records from {0} to {1}.'.format(date_min, date_max))
+print('\nThe current data set includes USGS earthquake records from {0} to {1}.'.format(date_min, date_max))
 
-print('- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
+print('\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
 print('Feature  \tMinimum\tMaximum\tMean\tStandard Deviation')
 stats_depth = quake_feature_stats(eq, 'depth')
 print('{0}\t{1:0.1f}\t{2:0.1f}\t{3:0.1f}\t{4:0.1f}'.format(
@@ -139,13 +134,18 @@ print('{0}\t{1:0.1f}\t{2:0.1f}\t{3:0.1f}\t{4:0.1f}'.format(
 	stats_mag['mean'],
 	stats_mag['std']))
 
+print('\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -')
+print('For the quake with greatest magnitude during the period, the following data were collected:')
+print(eq.loc[eq['mag'].argmax()])
+
 
 # pause for user
 #print('')
 #junk = raw_input('Press ENTER to plot daily quake counts; else press CTRL-C')
 
 # generate plot of daily quake counts
-print('\nThis may take a moment ...')
+print('\nGenerating plot of daily quake counts')
+print('This may take a moment ...')
 plot_quake_counts(eq)
 print('The plot is complete.  Take a look!')
 
@@ -153,12 +153,11 @@ print('The plot is complete.  Take a look!')
 #print('')
 #junk = raw_input('Press ENTER to generate a map of quakes; else press CTRL-C')
 
-# generate map of quakes
-print('\nThis may take a moment ...')
-plot_quakes(eq)
-print('The plot is complete.  Take a look!')
-
-# pause for user
-#print('')
-#junk = raw_input('All done ... press ENTER')
+# generate map of quakes with magnitude greater than mag_limit
+mag_limit = 6.0
+print('\nGenerating map of quakes with magnitudes greater than or equal to {0}'.format(mag_limit))
+print('This may take a moment ...')
+criterion = eq['mag'].map(lambda x: x >= mag_limit)
+plot_quakes(eq[criterion])
+print('\nThe plot is complete.  Take a look!')
 
