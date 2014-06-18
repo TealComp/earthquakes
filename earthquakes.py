@@ -3,6 +3,7 @@
 # import and explore earthquake data from USGS
 # http://earthquake.usgs.gov/earthquakes/feed/v1.0/csv.php
 # (c) TealComp.com 20140327
+# Updates: 20140617
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
 # --- import modules ---
@@ -61,7 +62,7 @@ def map_quakes(quakes):
 
 	cenlat = np.mean(quakes['latitude'])    # find central latitude
 	cenlon = np.mean(quakes['longitude'])   # find central longitude
-	fig = plt.figure(figsize=(9,9))         # create a new figure
+	fig = plt.figure(figsize=(7,7))         # create a new figure
         # create a map using a mercator projection
 	m = Basemap(resolution='l', 
                     projection='merc',
@@ -101,7 +102,7 @@ def map_quakes(quakes):
 		# let the user know we are still working
 		sys.stdout.write('. ')
 		sys.stdout.flush()
-	fig.show()
+#	fig.show()
 # ---
 
 def plot_mag_vs_depth(quakes):
@@ -245,7 +246,6 @@ print('\nGenerating plot of daily quake counts')
 print('This may take a moment ...')
 plt.figure(2)
 plot_mag_vs_depth(eq)
-plt.show()
 print('The plot is complete.  Take a look!')
 
 # pause for user
@@ -259,6 +259,9 @@ print('This may take a moment ...')
 criterion = eq['mag'].map(lambda x: x >= mag_limit)
 map_quakes(eq[criterion])
 print('\nThe plot is complete.  Take a look!')
+
+# Show all plots
+plt.show()
 
 # pause for user
 print('')
