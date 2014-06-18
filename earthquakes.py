@@ -5,18 +5,37 @@
 
 # --- import modules ---
 import sys
+import os
+import urllib2
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import pandas as pd
 import time as time
-import datetime as datetime
+import datetime as dt
 import calendar as calendar
 
 # --- functions ---
 def str2datetime(timestr):
 	""" Convert time string to datetime object """
-	return datetime.datetime.strptime(timestr, '%Y-%m-%dT%H:%M:%S.%fZ')
+	return dt.datetime.strptime(timestr, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+def get_data(url):
+	""" Download quake data from supplied URL and return """
+	try:
+		response = urllib2.urlopen(url)
+	except:
+		if hasattr(e, 'reason'):
+			print('Could not reach server')
+			print('Reason: {0}'.format(e.reason))
+		elif hasattr(e, 'code'):
+			print('The server could not fulfill the request')
+			print('Error code:'.format(e.code))
+		else:
+			print('Data retrieved successfully')
+
+	return response
+
 
 def plot_quakes(quakes):
 	""" Plot quakes in passed dataframe """
@@ -86,7 +105,7 @@ def plot_quake_counts(quakes):
 		quake_counts.append(cnt)
 		sys.stdout.write('. ')
 		sys.stdout.flush()
-		this_date = this_date + datetime.timedelta(days=1)
+		this_date = this_date + dt.timedelta(days=1)
 	# plot quake counts as a series of horizontal lines
 	plt.hlines(dates, 
 		   0, quake_counts,
@@ -109,8 +128,31 @@ def quake_feature_stats(quakes, feature):
 		'std' : np.std(quakes[feature])}
 
 
-# --- read data ---
-eq = pd.read_csv('usgs_earthquakes_all_20140327.csv', sep=',', header=0)
+# --- main routine ---
+
+# handle commandline arguments
+if len(sys.argv) < 1:
+	usage()
+	sys.exit(1)
+if sys.argv[1] == 'NEW':
+	# access quake data
+	quakes_url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.csv'
+	quake_data = get_data(quakes_url)
+	# download the data to a local file for later use
+	local_file = 'usgs_earthquakes_week_' + dt.datetime.now().strftime('%Y%m%d.%H%M') + '.csv'
+	with open(local_file, 'wb') as f:
+		f.write(quake_data.read())
+else:
+	# check whether user supplied filename
+	if (os.access(sys.argv[1], os.R_OK)):
+		local_file = sys.argv[1]
+		print('Accessing "{0}"'.format(local_file))
+	else:
+		print('Could not access "{0}"'.format(local_file))
+		sys.exit(2)
+
+# read data into dataframe
+eq = pd.read_csv(local_file, sep=',', header=0)
 
 # describe the data set
 date_min = np.min([str2datetime(tm) for tm in eq['time']])
@@ -143,6 +185,9 @@ print(eq.loc[eq['mag'].argmax()])
 #print('')
 #junk = raw_input('Press ENTER to plot daily quake counts; else press CTRL-C')
 
+# turn on interactive mode for plots
+plt.ion()
+
 # generate plot of daily quake counts
 print('\nGenerating plot of daily quake counts')
 print('This may take a moment ...')
@@ -154,10 +199,14 @@ print('The plot is complete.  Take a look!')
 #junk = raw_input('Press ENTER to generate a map of quakes; else press CTRL-C')
 
 # generate map of quakes with magnitude greater than mag_limit
-mag_limit = 6.0
+mag_limit = 5.0
 print('\nGenerating map of quakes with magnitudes greater than or equal to {0}'.format(mag_limit))
 print('This may take a moment ...')
 criterion = eq['mag'].map(lambda x: x >= mag_limit)
 plot_quakes(eq[criterion])
 print('\nThe plot is complete.  Take a look!')
+
+# pause for user
+print('')
+junk = raw_input('Press ENTER to generate a map of quakes; else press CTRL-C')
 
