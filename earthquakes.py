@@ -7,6 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import urllib2
 import time as time
 import datetime as datetime
 import calendar as calendar
@@ -100,7 +101,21 @@ def quake_feature_stats(quakes, feature):
 
 # --- main routine ---
 
-eq = pd.read_csv('usgs_earthquakes_all_20140407.csv', sep=',', header=0)
+url = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.csv'
+try:
+	response = urllib2.urlopen(url)
+except URLError as e:
+	if hasattr(e, 'reason'):
+		print('Could not reach server')
+		print('Reason: {0}'.format(e.reason))
+	elif hasattr(e, 'code'):
+		print('The server could not fulfill the request')
+		print('Error code:'.format(e.code))
+	else:
+		print('Data retrieved successfully')
+
+
+eq = pd.read_csv(response, sep=',', header=0)
 
 # describe the data set
 date_min = np.min([str2datetime(tm) for tm in eq['time']])
@@ -126,8 +141,8 @@ print('{0}\t{1:0.1f}\t{2:0.1f}\t{3:0.1f}\t{4:0.1f}'.format(
 
 
 # pause for user
-print('')
-junk = raw_input('Press ENTER to plot daily quake counts; else press CTRL-C')
+#print('')
+#junk = raw_input('Press ENTER to plot daily quake counts; else press CTRL-C')
 
 # generate plot of daily quake counts
 print('\nThis may take a moment ...')
@@ -135,8 +150,8 @@ plot_quake_counts(eq)
 print('The plot is complete.  Take a look!')
 
 # pause for user
-print('')
-junk = raw_input('Press ENTER to generate a map of quakes; else press CTRL-C')
+#print('')
+#junk = raw_input('Press ENTER to generate a map of quakes; else press CTRL-C')
 
 # generate map of quakes
 print('\nThis may take a moment ...')
@@ -144,6 +159,6 @@ plot_quakes(eq)
 print('The plot is complete.  Take a look!')
 
 # pause for user
-print('')
-junk = raw_input('All done ... press ENTER')
+#print('')
+#junk = raw_input('All done ... press ENTER')
 
